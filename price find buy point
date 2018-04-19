@@ -1,0 +1,158 @@
+#coding:utf-8
+def avg(len, y):
+    sum = 0
+    for i in range(len):
+        sum = sum + y[n - i]
+    return sum / len
+
+def checkhang(a, b):
+    for i in range(3480):
+        if b.cell_value(i, 1) == a:
+            ha = b.cell_value(i, 6)
+        else:
+            pass
+    return ha
+
+import xlrd
+import xlwt
+xlsfile = r"D:\stocks\pricegetbuy\pricefindbuy.xlsx"# 打开指定路径中的xls文件
+book = xlrd.open_workbook(xlsfile)#得到Excel文件的book对象，实例化对象
+sheet0 = book.sheet_by_index(0) # 通过sheet索引获得sheet对象
+
+xlsfile1 = r"D:\stocks\standardstocks.xlsx"# 打开指定路径中的xls文件
+book1 = xlrd.open_workbook(xlsfile1)#得到Excel文件的book对象，实例化对象
+sheet1 = book1.sheet_by_index(0) # 通过sheet索引获得sheet对象\
+
+book = xlwt.Workbook(encoding='utf-8', style_compression=0)
+sheet2 = book.add_sheet('p1', cell_overwrite_ok=True)
+sheet3 = book.add_sheet('p2', cell_overwrite_ok=True)
+sheet4 = book.add_sheet('p0', cell_overwrite_ok=True)
+sheet5 = book.add_sheet('rawdata', cell_overwrite_ok=True)
+
+p1code=[]
+p1name=[]
+p1hang=[]
+p2code=[]
+p2name=[]
+p2hang=[]
+p0code=[]
+p0name=[]
+p0hang=[]
+nn=1
+sheet5.write(0, 0, 'code')
+sheet5.write(0, 1, 'name')
+sheet5.write(0, 2, 'hang')
+sheet5.write(0, 3, 'value')
+sheet5.write(0, 4, 'volume')
+
+for i in range(0, 3474):
+    cell_value1 = sheet0.cell_value(i, 9)
+    raw = cell_value1.split('\n')
+    if len(list(raw))<10:
+        pass
+    else:
+        code = raw[1].split(',')[1].split(r"'")[1]
+        name = raw[1].split(',')[2]
+        date = raw[1].split(',')[0]
+        cook = raw[1:-1]
+        price = []
+        volume = []
+        value = []
+        ratio = []
+        maxp = []
+        minp = []
+        for i in range(len(cook)):
+            price.append(float(cook[i].split(',')[3]))
+            volume.append(float(cook[i].split(',')[8]))
+            value.append(float(cook[i].split(',')[9]))
+            maxp.append(float(cook[i].split(',')[4]))
+            minp.append(float(cook[i].split(',')[5]))
+        price.reverse()
+        volume.reverse()
+        value.reverse()
+        maxp.reverse()
+        minp.reverse()
+        hang = checkhang(code, sheet1)
+        sheet5.write(nn, 0, str(code))
+        sheet5.write(nn, 1, str(name))
+        sheet5.write(nn, 2, hang)
+        sheet5.write(nn, 3, str(value))
+        sheet5.write(nn, 4, str(volume))
+        nn = nn+1
+        price = price[-25:-1]
+        volume = volume[-25:-1]
+        value = value[-25:-1]
+        maxp = maxp[-25:-1]
+        minp = minp[-25:-1]
+        n = price.index(min(price))
+        today = price[-1]
+        ne = 1
+        while today > avg(ne, price):
+            ne = ne + 1
+            if ne > n - 1:
+                break
+        if ne == n:
+            p2code.append(code)
+            p2name.append(name)
+            p2hang.append(hang)
+        elif 10 < ne:
+            if price.index(price[-1]) - n < 5:
+                p1code.append(code)
+                p1name.append(name)
+                p1hang.append(hang)
+                if volume[-1] < volume[-2]:
+                    x = 0
+                    nour = price[n - 5:-1]
+                    while minp[-1] < max(nour):
+                        nour.pop(nour.index(max(nour)))
+                        x = x + 1
+                        if x > 5:
+                            break
+                    if x <= 2:
+                        p0code.append(code)
+                        p0name.append(name)
+                        p0hang.append(hang)
+            else:
+                p2code.append(code)
+                p2name.append(name)
+                p2hang.append(hang)
+        elif 5 <= ne <= 10:
+            p1code.append(code)
+            p1name.append(name)
+            p1hang.append(hang)
+            if volume[-1] < volume[-2]:
+                x = 0
+                nour = price[n - 3:-1]
+                while minp[-1] < max(nour):
+                    nour.pop(nour.index(max(nour)))
+                    x = x + 1
+                    if x > 3:
+                        break
+                if x <= 2:
+                    p0code.append(code)
+                    p0name.append(name)
+                    p0hang.append(hang)
+        elif ne < 5:
+            pass
+print(p1code)
+print(p1name)
+print(p1hang)
+print(p2code)
+print(p2name)
+print(p2hang)
+print(p0code)
+print(p0name)
+print(p0hang)
+for i in range(len(p1code)):
+    sheet2.write(i, 0, p1code[i])
+    sheet2.write(i, 1, p1name[i])
+    sheet2.write(i, 2, p1hang[i])
+for i in range(len(p2code)):
+    sheet3.write(i, 0, p2code[i])
+    sheet3.write(i, 1, p2name[i])
+    sheet3.write(i, 2, p2hang[i])
+for i in range(len(p0code)):
+    sheet4.write(i, 0, p0code[i])
+    sheet4.write(i, 1, p0name[i])
+    sheet4.write(i, 2, p0hang[i])
+book.save(r'D:\stocks\pricegetbuy\allbufferp1p2.xls')
