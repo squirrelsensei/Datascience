@@ -1,0 +1,110 @@
+#coding:utf-8
+from selenium import webdriver
+from pyquery import PyQuery as pq
+from multiprocessing import Process, Manager
+import xlrd
+import xlwt
+import time
+xlsfile = r"D:\stocks\rongzirongquangetbuy\20180417z.xlsx"  # 打开指定路径中的C1
+book = xlrd.open_workbook(xlsfile)  # 得到Excel文件的book对象，实例化对象
+sheet0 = book.sheet_by_index(0)  # 通过sheet索引获得sheet对象
+book = xlwt.Workbook(encoding='utf-8', style_compression=0)
+sheet = book.add_sheet('today', cell_overwrite_ok=True)
+lazy=[]
+subprice = 10
+today = '2018-04-18'
+def split_get_data(k1, k2):
+    start = time.time()
+    for i in k2:
+        hang = sheet0.cell_value(i, 5)
+        code = sheet0.cell_value(i, 0)
+        name = sheet0.cell_value(i, 1)
+        yxjs = []
+        yjlr = []
+        yljrq = []
+        rawxjs = sheet0.cell_value(i, 2).split('[')[1].split(']')[0].split(',')
+        for n in range(len(rawxjs)):
+            yxjs.append(float(rawxjs[n]))
+        rawjlr = sheet0.cell_value(i, 3).split('[')[1].split(']')[0].split(',')
+        for n in range(len(rawjlr)):
+            yjlr.append(float(rawjlr[n]))
+        rawljrq = sheet0.cell_value(i, 4).split('[')[1].split(']')[0].split(',')
+        for n in range(len(rawljrq)):
+            yljrq.append(float(rawljrq[n]))
+        browser = webdriver.PhantomJS()
+        url = 'http://data.eastmoney.com/rzrq/stock/' + str(code) + '.html'
+        browser.get(url)
+        html = browser.execute_script("return document.documentElement.outerHTML")
+        doc = pq(html)
+        trsingle = doc('tr[class=""]')
+        day = trsingle('td[class="col"]').eq(0).text()
+        if day == today:
+            xj = trsingle('td').eq(1).text()
+            if len(xj) <= 1:
+                xj = subprice
+            tran1 = trsingle('td').eq(7).text()
+            if tran1.isdigit() == False:
+                b = tran1.split(" ")
+                if len(b) < 2:
+                    if len(b[0]) <= 1:
+                        tran1 = float(0)
+                    else:
+                        tran1 = float(b[0]) / 10000
+                elif ord(b[1]) == 20159:
+                    tran1 = float(b[0]) * 10000
+                else:
+                    tran1 = float(b[0])
+            else:
+                tran1 = float(tran1) / 10000
+            tran3 = trsingle('td').eq(12).text()
+            if tran3.isdigit() == False:
+                b = tran3.split(" ")
+                if len(b) < 2:
+                    if len(b[0]) <= 1:
+                        tran3 = float(0)
+                    else:
+                        tran3 = float(b[0]) / 10000
+                elif ord(b[1]) == 20159:
+                    tran3 = float(b[0]) * 10000
+                else:
+                    tran3 = float(b[0])
+            else:
+                tran3 = float(tran3) / 10000
+            tljrq = float(xj) * tran3 + float(yljrq[-1])
+            tjlr = tran1 - (float(xj) * tran3) + float(yjlr[-1])
+            yxjs.append(float(xj))
+            yjlr.append(float(tjlr))
+            yljrq.append(float(tljrq))
+            k1[i] = [str(code), str(name), str(yxjs), str(yjlr), str(yljrq), str(hang), str(day)]
+        else:
+            k1[i] = [str(code), str(name), str(yxjs), str(yjlr), str(yljrq), str(hang), str(day)]
+    end = time.time()
+    print('Task %s runs %0.2f seconds.' % (k2[0], (end - start)))
+
+def save_data():
+    book.save(r'D:\stocks\rongzirongquangetbuy\20180418a.xls')
+
+if __name__ == '__main__':
+    with Manager() as manager:
+        k1 = manager.list(range(798))
+        k2 = manager.list(range(798))
+        p_list=[]
+        a = 0
+        b = 114
+        while b <= 228:
+            p = Process(target=split_get_data, args=(k1, k2[a:b]))
+            p.start()
+            a = a+114
+            b = b+114
+            p_list.append(p)
+        for res in p_list:
+            res.join()
+        for i in range(len(k1)):
+            sheet.write(i, 0, str(k1[i][0]))
+            sheet.write(i, 1, str(k1[i][1]))
+            sheet.write(i, 2, str(k1[i][2]))
+            sheet.write(i, 3, str(k1[i][3]))
+            sheet.write(i, 4, str(k1[i][4]))
+            sheet.write(i, 5, str(k1[i][5]))
+            sheet.write(i, 6, str(k1[i][6]))
+        save_data()
