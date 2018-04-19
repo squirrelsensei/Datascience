@@ -1,0 +1,77 @@
+#coding:utf-8
+
+def blocks_ft_sum(a, b, frame):
+    ftsum = 0
+    for i in range(frame.shape[0]):
+        value = []
+        volume = []
+        rawvalue = frame.iloc[i, 3].split('[')[1].split(']')[0].split(',')
+        for n in range(len(rawvalue)):
+            value.append(float(rawvalue[n]))
+        rawvolume = frame.iloc[i, 4].split('[')[1].split(']')[0].split(',')
+        for n in range(len(rawvolume)):
+            volume.append(float(rawvolume[n]))
+        ratio = []
+        if len(value) > (a+b):
+            for q in range(a):
+                if value[-q - b] - value[-q - b - 1] == 0:
+                    rawratio = volume[-q - b]
+                else:
+                    rawratio = volume[-q - b] / (value[-q - b] - value[-q - b - 1])
+                ratio.append(rawratio)
+            if max(ratio) == ratio[0]:
+                ftsum = ftsum + 1
+        else:
+            pass
+    return ftsum
+
+def tutuwang(x1, y1, y2, y3, y4, h, d):
+    plt.figure()
+    # figure分成3行3列, 取得第一个子图的句柄, 第一个子图跨度为1行3列, 起点是表格(0, 0)
+    ax1 = plt.subplot2grid((3, 3), (0, 0), colspan=3, rowspan=1)
+    l1, = ax1.plot(x1, y1, '#000000', lw=1)
+    ax1.set_title(str(h) + ' ' + str(d))
+    plt.legend(handles=[l1], labels=['板块市值'], loc='upper left', fontsize=8)
+    # figure分成3行3列, 取得第二个子图的句柄, 第二个子图跨度为1行3列, 起点是表格(1, 0)
+    ax2 = plt.subplot2grid((3, 3), (1, 0), colspan=3, rowspan=1)
+    l2, = ax2.plot(x1, y2, 'b', lw=1)
+    plt.legend(handles=[l2], labels=['板块波动'], loc='upper left', fontsize=8)
+    line, = ax2.plot(x1, y4, 'r--', lw=0.7)
+    # figure分成3行3列, 取得第四个子图的句柄, 第四个子图跨度为1行3列, 起点是表格(2, 0)
+    ax3 = plt.subplot2grid((3, 3), (2, 0), colspan=3, rowspan=1)
+    l3, = ax3.plot(x1, y3, 'r', lw=1)
+    plt.legend(handles=[l3], labels=['板块成交额'], loc='upper left', fontsize=8)
+    plt.savefig(str(h) + str(d) + '.png', dpi=300)
+    plt.close()
+    return None
+
+import pandas as pd
+import xlrd
+import xlwt
+import matplotlib.pyplot as plt
+plt.rcParams['font.sans-serif']=['SimHei'] #用来正常显示中文标签
+plt.rcParams['axes.unicode_minus']=False #用来正常显示负号
+
+xlsfile1 = r"D:\stocks\standardstocks.xlsx"# 打开指定路径中的xls文件
+book1 = xlrd.open_workbook(xlsfile1)#得到Excel文件的book对象，实例化对象
+sheet1 = book1.sheet_by_index(1) # 通过sheet索引获得sheet对象\
+
+xlsfile = r"D:\stocks\pricegetbuy\orz.xlsx"  # 打开指定路径中的xls文件
+df = pd.DataFrame(pd.read_excel(xlsfile))
+
+book2 = xlwt.Workbook(encoding='utf-8', style_compression=0)
+sheet2 = book2.add_sheet('ftsum', cell_overwrite_ok=True)
+
+for i in range(66):
+    hang = sheet1.cell_value(i, 0)
+    df0 = df.loc[df['hang'] == hang]
+    maxftsum = []
+    for r in range(1, 8):
+        sheet2.write(i, 0, hang)
+        sheet2.write(i, 8, df0.shape[0])
+        sheet2.write(i, 8-r, blocks_ft_sum(7, r, df0))
+        maxftsum.append(blocks_ft_sum(7, r, df0))
+    if max(maxftsum) == maxftsum[0]:
+        print(hang)
+        sheet2.write(i, 9, 'important')
+book2.save(r'D:\stocks\pricegetbuy\ftsum.xls')
